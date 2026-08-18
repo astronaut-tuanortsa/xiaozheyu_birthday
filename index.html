@@ -329,16 +329,36 @@
     if (!bgm.muted) startMusic();
   });
 
-  /* 末屏视频背景：进入信件时星空淡出、视频淡入；文件缺失时隐藏 */
+  /* 末屏视频背景：进入信件时星空淡出、视频淡入；
+     移动端浏览器常拦截自动播放（微信内嵌、低数据模式等），
+     失败时不隐藏视频，等下一次轻触（用户手势）再重试 */
   video.addEventListener("error", function(){ video.style.display = "none"; });
-  function enterVideo(){
-    sky.classList.add("dim");
+  function showVideo(){
+    video.classList.add("on");
+  }
+  function tryPlayVideo(){
+    video.muted = true;
     var p = video.play();
     if (p && p.then){
-      p.then(function(){ video.classList.add("on"); }).catch(function(){ video.style.display = "none"; });
+      p.then(showVideo).catch(retryVideoOnGesture);
     } else {
-      video.classList.add("on");
+      showVideo();
     }
+  }
+  function retryVideoOnGesture(){
+    var stage = document.getElementById("letter-stage");
+    var retry = function(){
+      stage.removeEventListener("click", retry);
+      stage.removeEventListener("touchstart", retry);
+      tryPlayVideo();
+    };
+    stage.addEventListener("click", retry);
+    stage.addEventListener("touchstart", retry);
+  }
+  function enterVideo(){
+    sky.classList.add("dim");
+    video.addEventListener("playing", showVideo);
+    tryPlayVideo();
   }
   function leaveVideo(){
     sky.classList.remove("dim");
